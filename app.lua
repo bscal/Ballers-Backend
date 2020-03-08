@@ -44,9 +44,14 @@ app:match("/player/:steamid[%d]/:cid[%d]", function(self)
         return LogErr("no character id")
     end
 
+    local player = Players:find(self.params.steamid, self.params.cid)
+
+    if not player then print("No character") end
+
     print(self.params.steamid)
     print(self.params.cid)
 
+    return { json = { player }}
 end)
 
 function LogErr(msg)
