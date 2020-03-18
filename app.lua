@@ -1,30 +1,32 @@
 local lapis = require("lapis")
 local config = require("lapis.config").get()
 local util = require("lapis.util")
+local db = require("lapis.db")
 local Model = require("lapis.db.model").Model
-local respond_to = require("lapis.application").respond_to
 
 local app = lapis.Application()
+
+-- ====================== Models ======================
 
 local Users = Model:extend("users", {
     primary_key = "steamid"
 })
 
 local Characters = Model:extend("characters", {
-    primary_key = "steamid",
-    cid = "cid"
+    primary_key = { "steamid", "cid" }
 })
 
 local CharacterStats = Model:extend("character_stats", {
-    primary_key = "steamid",
-    cid = "cid"
+    primary_key = { "steamid", "cid" }
 })
 
+-- ====================== Functions ======================
 
 app:get("/", function()
     return { layout = false, "This is a test"}
 end)
 
+-- ====================== Login ======================
 app:match("/login/:steamid[%d]", function(self)
     if not self.params.steamid then
         return LogErr("no steamid")
@@ -36,12 +38,15 @@ app:match("/login/:steamid[%d]", function(self)
 		Users:create({steamid = self.params.steamid})
 		print("Creating user...")
 	else
-		print("User exists...")
+        print("User exists...")
+        user.last_login = db.format_date()
+        user:update("last_login")
     end
 
     return { json = {user} }
 end)
 
+-- ====================== Gets Character ======================
 app:match("/character/:steamid[%d]/:cid[%d]", function(self)
     if not self.params.steamid then
         return LogErr("no steamid")
@@ -63,6 +68,9 @@ app:match("/character/:steamid[%d]/:cid[%d]", function(self)
     return { json = { char, charStats }}
 end)
 
+-- ====================== POSTs ======================
+
+-- ====================== Creates Character ======================
 app:post("/character/create", function(self)
     -- Checks if character already exists
     if Characters:find(self.params.steamid, self.params.cid) then return { status = 200, redirect_to = "/" } end
@@ -84,6 +92,7 @@ app:post("/character/create", function(self)
         weight = self.params.weight
     })
 
+    -- Creates character stats
     CharacterStats:create({
         steamid = self.params.steamid,
         cid = index
@@ -99,14 +108,38 @@ app:post("/character/create", function(self)
     return { status = 200, redirect_to = "/" }
 end)
 
+-- ====================== Delete Character ======================
+app:post("/character/delete", function(self)
+    if not self.params.steamid or not self.params.cid then return LogErr("Not proper POST params!") end
+
+    local character = Characters:find(self.params.steamid, self.params.cid)
+
+    if not character then return LogErr("Character not found!") end
+
+    if not character:delete() then
+        LogErr("Character could not be deleted!")
+    else
+        return { status = 200, layout = false, "Character deleted" }
+    end
+end)
+
+-- Utility function that will print message to console and return an error response
 function LogErr(msg)
     print("[Error]: " .. msg)
     return { status = 400, layout = false, "[Error]: " .. msg }
 end
 
+function LogErrCode(msg, code)
+    print("[Error]: " .. msg)
+    return { status = code, layout = false, "[Error]: " .. msg }
+end
+
+-- Overrides default handle_error
+-- Since this app is primarily used as a backend the default renders
+-- to a page. This will print to console the errors and send basic info as response.
 function app:handle_error(err, trace)
     print ("[Error]: " .. err .. " | " .. trace)
-    return { render = {status = 500, layout = false, "[Error]: " .. err .. " | " .. trace} }
-  end
+    return {status = 500, layout = false, "[Error]: " .. err .. " | " .. trace}
+end
 
 return app
