@@ -47,7 +47,7 @@ app:match("/login/:steamid[%d]", function(self)
 end)
 
 -- ====================== Gets Character ======================
-app:match("/character/:steamid[%d]/:cid[%d]", function(self)
+app:get("/character/:steamid[%d]/:cid[%d]", function(self)
     if not self.params.steamid then
         return LogErr("no steamid")
     end
@@ -67,6 +67,21 @@ app:match("/character/:steamid[%d]/:cid[%d]", function(self)
 
     return { json = { char, charStats }}
 end)
+
+app:get("/character/:steamid[%d]/all", function(self)
+    if not self.params.steamid then
+        return LogErr("no steamid")
+    end
+
+    local chars = Characters:select("where steamid = ?", self.params.steamid)
+    local charStats = CharacterStats:select("where steamid = ?", self.params.steamid)
+
+    if not chars then return LogErr("No character!") end
+    if not charStats then return LogErr("No character stats!") end
+
+    return { json = { #chars, chars, charStats }}
+end)
+
 
 -- ====================== POSTs ======================
 
@@ -121,6 +136,20 @@ app:post("/character/delete", function(self)
     else
         return { status = 200, layout = false, "Character deleted" }
     end
+end)
+
+-- ====================== Save Character ======================
+app:post("/character/save", function(self)
+    if not self.params.steamid or not self.params.cid or not self.params.data then return LogErr("Not proper POST params!") end
+
+    local character = Characters:find(self.params.steamid, self.params.cid)
+
+    if not character then return LogErr("Character not found!") end
+
+    character.stats = self.params.data
+    character:update("stats")
+
+    return { status = 200, layout = false, "Character saved" }
 end)
 
 -- Utility function that will print message to console and return an error response
