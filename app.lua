@@ -3,7 +3,6 @@ local config = require("lapis.config").get()
 local util = require("lapis.util")
 local db = require("lapis.db")
 local Model = require("lapis.db.model").Model
-
 local app = lapis.Application()
 
 -- ====================== Models ======================
@@ -101,6 +100,9 @@ app:post("/character/create", function(self)
     Characters:create({
         steamid = self.params.steamid,
         cid = index,
+        first_name = self.params.first_name,
+        last_name = self.params.last_name,
+        class = self.params.class,
         position = self.params.position,
         height = self.params.height,
         wingspan = self.params.wingspan,
@@ -108,10 +110,16 @@ app:post("/character/create", function(self)
     })
 
     -- Creates character stats
-    CharacterStats:create({
+    local cStats = CharacterStats:create({
         steamid = self.params.steamid,
         cid = index
     })
+
+    local stats = {}
+    for k,v in pairs(self.params) do
+        stats[k] = v;
+    end
+    cStats:update(stats)
 
     -- Increments users character index
     user.char_index = user.char_index + 1
@@ -140,14 +148,20 @@ end)
 
 -- ====================== Save Character ======================
 app:post("/character/save", function(self)
-    if not self.params.steamid or not self.params.cid or not self.params.data then return LogErr("Not proper POST params!") end
+    if not self.params.steamid or not self.params.stats then return LogErr("Not proper POST params!") end
 
     local character = Characters:find(self.params.steamid, self.params.cid)
-
     if not character then return LogErr("Character not found!") end
 
-    character.stats = self.params.data
-    character:update("stats")
+    local cStats = CharacterStats:find(self.params.steamid, self.params.cid)
+    if not cStats then return LogErr("Character Stats not found!") end
+
+    local data = util.from_json(self.params.stats)
+    local stats = {}
+    for k,v in pairs(data) do
+        stats[k] = v;
+    end
+    cStats:update(stats)
 
     return { status = 200, layout = false, "Character saved" }
 end)
