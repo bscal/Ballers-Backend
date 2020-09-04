@@ -89,9 +89,9 @@ app:get("/character/:steamid[%d]/all", function(self)
         return LogErr("no steamid")
     end
 
-    local chars = Characters:select("where steamid = ? and cid = ?", self.params.steamid)
-    local charStats = CharacterStats:select("where steamid = ? and cid = ?", self.params.steamid)
-    local charSkills = CharacterSkills:select("where steamid = ? and cid = ?", self.params.steamid)
+    local chars = Characters:select("where steamid = ?", self.params.steamid)
+    local charStats = CharacterStats:select("where steamid = ?", self.params.steamid)
+    local charSkills = CharacterSkills:select("where steamid = ?", self.params.steamid)
 
     if not chars then return LogErr("No character!") end
     if not charStats then return LogErr("No character stats!") end
