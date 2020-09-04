@@ -19,6 +19,10 @@ local CharacterStats = Model:extend("character_stats", {
     primary_key = { "steamid", "cid" }
 })
 
+local CharacterSkills = Model:extend("character_skills", {
+    primary_key = { "steamid", "cid" }
+})
+
 local AICharacters = Model:extend("ai_characters", {
     primary_key = { "id" }
 })
@@ -61,14 +65,23 @@ app:get("/character/:steamid[%d]/:cid[%d]", function(self)
 
     local char = Characters:find(self.params.steamid, self.params.cid)
     local charStats = CharacterStats:find(self.params.steamid, self.params.cid)
+    local charSkills = CharacterSkills:find(self.params.steamid, self.params.cid)
 
     if not char then return LogErr("No character!") end
     if not charStats then return LogErr("No character stats!") end
+    if not charSkills then
+        CharacterSkills:create({
+            steamid = self.params.steamid,
+            cid = self.params.cid,
+            skills_json = "{}"
+        })
+        return LogErr("No character skills!")
+    end
 
     print(self.params.steamid)
     print(self.params.cid)
 
-    return { json = { char, charStats }}
+    return { json = { char, charStats, charSkills }}
 end)
 
 app:get("/character/:steamid[%d]/all", function(self)
@@ -76,13 +89,15 @@ app:get("/character/:steamid[%d]/all", function(self)
         return LogErr("no steamid")
     end
 
-    local chars = Characters:select("where steamid = ?", self.params.steamid)
-    local charStats = CharacterStats:select("where steamid = ?", self.params.steamid)
+    local chars = Characters:select("where steamid = ? and cid = ?", self.params.steamid)
+    local charStats = CharacterStats:select("where steamid = ? and cid = ?", self.params.steamid)
+    local charSkills = CharacterSkills:select("where steamid = ? and cid = ?", self.params.steamid)
 
     if not chars then return LogErr("No character!") end
     if not charStats then return LogErr("No character stats!") end
+    if not charSkills then return LogErr("No character skills!") end
 
-    return { json = { #chars, chars, charStats }}
+    return { json = { #chars, chars, charStats, charSkills }}
 end)
 
 -- Getting ai player data
@@ -136,6 +151,12 @@ app:post("/character/create", function(self)
     end
     cStats:update(stats)
 
+    CharacterSkills:create({
+        steamid = self.params.steamid,
+        cid = index,
+        skills_json = "{}"
+    })
+
     -- Increments users character index
     user.char_index = user.char_index + 1
     user:update("char_index")
@@ -177,6 +198,13 @@ app:post("/character/save", function(self)
         stats[k] = v;
     end
     cStats:update(stats)
+
+    if (self.params.skills) then
+        local cSkills = CharacterStats:find(self.params.steamid, self.params.cid)
+        if not cSkills then return LogErr("Character Stats not found!") end
+        cSkills.skills_json = self.param.skills
+        cSkills:update("skills_json");
+    end
 
     return { status = 200, layout = false, "Character saved" }
 end)
