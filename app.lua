@@ -181,6 +181,15 @@ app:post("/character/save", function(self)
     return { status = 200, layout = false, "Character saved" }
 end)
 
+-- =============================================================
+-- ======================   MatchMaking   ======================
+-- =============================================================
+
+
+-- =============================================================
+-- ====================== Utils Functions ======================
+-- =============================================================
+
 -- Utility function that will print message to console and return an error response
 function LogErr(msg)
     print("[Error]: " .. msg)
