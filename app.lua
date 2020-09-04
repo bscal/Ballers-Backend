@@ -20,7 +20,7 @@ local CharacterStats = Model:extend("character_stats", {
 })
 
 local AICharacters = Model:extend("ai_characters", {
-    primary_key = { "ai_id" }
+    primary_key = { "id" }
 })
 
 -- ====================== Functions ======================
@@ -78,7 +78,7 @@ app:get("/character/:steamid[%d]/all", function(self)
 
     local chars = Characters:select("where steamid = ?", self.params.steamid)
     local charStats = CharacterStats:select("where steamid = ?", self.params.steamid)
-    
+
     if not chars then return LogErr("No character!") end
     if not charStats then return LogErr("No character stats!") end
 
