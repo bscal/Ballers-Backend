@@ -88,8 +88,8 @@ end)
 -- Getting ai player data
 app:get("/character/ai/:ai_id[%d]", function(self)
     if not self.params.ai_id then return LogErr("no ai id") end
-
-    local aiChar = AICharacters:select(self.params.ai_id)
+    print(self.params.ai_id)
+    local aiChar = AICharacters:find(self.params.ai_id)
 
     if not aiChar then return LogErr("AI Char does not exist") end
 
